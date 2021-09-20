@@ -5,12 +5,12 @@ go 1.17
 require (
 	fyne.io/fyne/v2 v2.1.0
 	github.com/go-git/go-git/v5 v5.4.2
-	github.com/lusingander/gogigu v0.0.0-20210920065055-c6ba72de877b
+	github.com/lusingander/gogigu v0.0.0-20210920142616-152d538ba76e
 )
 
 require (
 	github.com/Microsoft/go-winio v0.5.0 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20210707164159-52430bf6b52c // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20210920160938-87db9fbc61c7 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
