@@ -36,7 +36,7 @@ func run(args []string) error {
 	a := app.New()
 	w := a.NewWindow(appTitle)
 	w.SetContent(buildCommitGraphView(repo))
-	w.Resize(fyne.NewSize(800, 600))
+	w.Resize(fyne.NewSize(1200, 600))
 	w.ShowAndRun()
 
 	return nil
@@ -55,7 +55,7 @@ func openGitRepository(path string) (*gogigu.Repository, error) {
 }
 
 func buildCommitGraphView(repo *gogigu.Repository) fyne.CanvasObject {
-	return widget.NewList(
+	list := widget.NewList(
 		func() int {
 			return len(repo.Nodes)
 		},
@@ -66,15 +66,23 @@ func buildCommitGraphView(repo *gogigu.Repository) fyne.CanvasObject {
 			updateCommitGraphItem(repo.Nodes[id], item)
 		},
 	)
+	return list
 }
 
 func commitGraphItem() fyne.CanvasObject {
 	msg := widget.NewLabel("commit message")
 	hash := widget.NewLabel("hash")
+	author := widget.NewLabel("author")
 	committedAt := widget.NewLabel("2006/01/02 15:04:05")
-	return container.NewHBox(
+	var msgW, hashW, authorW float32 = 500, 100, 200
+	msg.Move(fyne.NewPos(0, 0))
+	hash.Move(fyne.NewPos(msg.Position().X+msgW, 0))
+	author.Move(fyne.NewPos(hash.Position().X+hashW, 0))
+	committedAt.Move(fyne.NewPos(author.Position().X+authorW, 0))
+	return container.NewWithoutLayout(
 		msg,
 		hash,
+		author,
 		committedAt,
 	)
 }
@@ -83,7 +91,8 @@ func updateCommitGraphItem(node *gogigu.Node, item fyne.CanvasObject) {
 	objs := item.(*fyne.Container).Objects
 	objs[0].(*widget.Label).SetText(summaryMessage(node))
 	objs[1].(*widget.Label).SetText(shortHash(node))
-	objs[2].(*widget.Label).SetText(commitedAt(node))
+	objs[2].(*widget.Label).SetText(authorName(node))
+	objs[3].(*widget.Label).SetText(commitedAt(node))
 }
 
 func summaryMessage(node *gogigu.Node) string {
@@ -96,6 +105,10 @@ func summaryMessage(node *gogigu.Node) string {
 
 func shortHash(node *gogigu.Node) string {
 	return node.Hash[:7]
+}
+
+func authorName(node *gogigu.Node) string {
+	return node.Commit.Author.Name
 }
 
 func commitedAt(node *gogigu.Node) string {
