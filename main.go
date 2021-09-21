@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-git/go-git/v5"
+	"github.com/lusingander/fynegit/internal/graph"
 	"github.com/lusingander/gogigu"
 )
 
@@ -116,44 +117,62 @@ func calcCommitGraphTree(edges map[int][]*edge, repo *gogigu.Repository, node *g
 
 	objs := make([]fyne.CanvasObject, 0)
 	for _, edge := range edges[node.PosY()] {
+		createEdge := func(leftOrTop fyne.Position, length float32, vertical bool) *canvas.Line {
+			e := canvas.NewLine(graph.GetColor(edge.posX))
+			e.StrokeWidth = 2
+			e.Move(leftOrTop)
+			if vertical {
+				e.Resize(fyne.NewSize(0, length))
+			} else {
+				e.Resize(fyne.NewSize(length, 0))
+			}
+			return e
+		}
 		switch edge.edgeType {
 		case straight:
-			e := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e.StrokeWidth = 2
-			e.Move(fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, 0))
-			e.Resize(fyne.NewSize(0, graphAreaHeight))
+			e := createEdge(
+				fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, 0),
+				graphAreaHeight,
+				true,
+			)
 			objs = append(objs, e)
 		case up:
-			e := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e.StrokeWidth = 2
-			e.Move(fyne.NewPos(posX, 0))
-			e.Resize(fyne.NewSize(0, posY-circleRadius))
+			e := createEdge(
+				fyne.NewPos(posX, 0),
+				posY-circleRadius,
+				true,
+			)
 			objs = append(objs, e)
 		case down:
-			e := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e.StrokeWidth = 2
-			e.Move(fyne.NewPos(posX, posY+circleRadius))
-			e.Resize(fyne.NewSize(0, posY-circleRadius))
+			e := createEdge(
+				fyne.NewPos(posX, posY+circleRadius),
+				posY-circleRadius,
+				true,
+			)
 			objs = append(objs, e)
 		case branch:
-			e1 := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e1.StrokeWidth = 2
-			e1.Move(fyne.NewPos(posX+circleRadius, posY))
-			e1.Resize(fyne.NewSize(float32((edge.posX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)), 0))
-			e2 := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e2.StrokeWidth = 2
-			e2.Move(fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, 0))
-			e2.Resize(fyne.NewSize(0, graphAreaHeight/2))
+			e1 := createEdge(
+				fyne.NewPos(posX+circleRadius, posY),
+				float32((edge.posX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
+				false,
+			)
+			e2 := createEdge(
+				fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, 0),
+				graphAreaHeight/2,
+				true,
+			)
 			objs = append(objs, e1, e2)
 		case merge:
-			e1 := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e1.StrokeWidth = 2
-			e1.Move(fyne.NewPos(posX+circleRadius, posY))
-			e1.Resize(fyne.NewSize(float32((edge.posX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)), 0))
-			e2 := canvas.NewLine(color.NRGBA{0, 0, 128, 150})
-			e2.StrokeWidth = 2
-			e2.Move(fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, graphAreaHeight/2))
-			e2.Resize(fyne.NewSize(0, graphAreaHeight/2))
+			e1 := createEdge(
+				fyne.NewPos(posX+circleRadius, posY),
+				float32((edge.posX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
+				false,
+			)
+			e2 := createEdge(
+				fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, graphAreaHeight/2),
+				graphAreaHeight/2,
+				true,
+			)
 			objs = append(objs, e1, e2)
 		}
 	}
@@ -162,8 +181,8 @@ func calcCommitGraphTree(edges map[int][]*edge, repo *gogigu.Repository, node *g
 	rect.Resize(fyne.NewSize(graphAreaWidth, graphAreaHeight))
 
 	circle := &canvas.Circle{}
-	circle.StrokeColor = color.NRGBA{0, 0, 128, 150}
-	circle.FillColor = color.NRGBA{0, 0, 128, 50}
+	circle.StrokeColor = graph.GetColor(node.PosX())
+	circle.FillColor = graph.GetColor(node.PosX())
 	circle.StrokeWidth = 2
 	circle.Move(fyne.NewPos(posX-circleRadius, posY-circleRadius))
 	circle.Resize(fyne.NewSize(circleRadius*2, circleRadius*2))
