@@ -210,5 +210,5 @@ func authorName(node *gogigu.Node) string {
 }
 
 func commitedAt(node *gogigu.Node) string {
-	return node.Commit.Committer.When.Format(dateTimeFormat)
+	return node.Commit.Author.When.Format(dateTimeFormat)
 }
