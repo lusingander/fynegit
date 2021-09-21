@@ -41,31 +41,49 @@ func Start(w fyne.Window, repo *gogigu.Repository) {
 		m.SetContent(m.buildCommitGraphView())
 	}
 	m.Resize(defaultWindowSize)
+	m.SetMainMenu(m.buildMainMenu())
 	m.ShowAndRun()
 }
 
+func (m *manager) buildMainMenu() *fyne.MainMenu {
+	openMenuItem := fyne.NewMenuItem("Open...", m.showRepositoryOpenDialog)
+	closeMenuItem := fyne.NewMenuItem("Close repository", m.closeRepository)
+	fileMenu := fyne.NewMenu("File", openMenuItem, fyne.NewMenuItemSeparator(), closeMenuItem)
+	return fyne.NewMainMenu(fileMenu)
+}
+
 func (m *manager) buildEmptyView() fyne.CanvasObject {
-	open := func() {
-		callback := func(lu fyne.ListableURI, err error) {
-			if err != nil {
-				dialog.ShowError(err, m.Window)
-				return
-			}
-			if lu == nil {
-				return // canceled
-			}
-			repo, err := repository.OpenGitRepository(lu.String()[7:]) // `file://`
-			if err != nil {
-				dialog.ShowError(err, m.Window)
-				return
-			}
-			m.repo = repo
-			m.SetContent(m.buildCommitGraphView())
-		}
-		dialog.ShowFolderOpen(callback, m.Window)
-	}
-	openButton := widget.NewButtonWithIcon("Open Git Repository", theme.StorageIcon(), open)
+	openButton := widget.NewButtonWithIcon(
+		"Open Git Repository",
+		theme.StorageIcon(),
+		m.showRepositoryOpenDialog,
+	)
 	return container.NewCenter(openButton)
+}
+
+func (m *manager) showRepositoryOpenDialog() {
+	callback := func(lu fyne.ListableURI, err error) {
+		if err != nil {
+			dialog.ShowError(err, m.Window)
+			return
+		}
+		if lu == nil {
+			return // canceled
+		}
+		repo, err := repository.OpenGitRepository(lu.String()[7:]) // `file://`
+		if err != nil {
+			dialog.ShowError(err, m.Window)
+			return
+		}
+		m.repo = repo
+		m.SetContent(m.buildCommitGraphView())
+	}
+	dialog.ShowFolderOpen(callback, m.Window)
+}
+
+func (m *manager) closeRepository() {
+	m.SetContent(m.buildEmptyView())
+	m.repo = nil
 }
 
 func (m *manager) buildCommitGraphView() fyne.CanvasObject {
