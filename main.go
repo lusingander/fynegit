@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"github.com/lusingander/fynegit/internal/repository"
 	"github.com/lusingander/fynegit/internal/ui"
-	"github.com/lusingander/gogigu"
 )
 
 const (
@@ -21,7 +20,7 @@ func main() {
 }
 
 func run(args []string) error {
-	repo, err := openGitRepositoryFromArgs(args)
+	repo, err := repository.OpenGitRepositoryFromArgs(args)
 	if err != nil {
 		return err
 	}
@@ -31,16 +30,4 @@ func run(args []string) error {
 	ui.Start(w, repo)
 
 	return nil
-}
-
-func openGitRepositoryFromArgs(args []string) (*gogigu.Repository, error) {
-	if len(args) <= 1 {
-		return nil, nil
-	}
-	path := args[1]
-	repo, err := repository.OpenGitRepository(path)
-	if err != nil {
-		return nil, err
-	}
-	return repo, nil
 }

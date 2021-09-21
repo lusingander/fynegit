@@ -16,3 +16,10 @@ func OpenGitRepository(path string) (*gogigu.Repository, error) {
 	}
 	return repo, nil
 }
+
+func OpenGitRepositoryFromArgs(args []string) (*gogigu.Repository, error) {
+	if len(args) <= 1 {
+		return nil, nil
+	}
+	return OpenGitRepository(args[1])
+}

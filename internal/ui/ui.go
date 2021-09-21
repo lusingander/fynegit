@@ -82,6 +82,9 @@ func (m *manager) showRepositoryOpenDialog() {
 }
 
 func (m *manager) closeRepository() {
+	if m.repo == nil {
+		return
+	}
 	m.SetContent(m.buildEmptyView())
 	m.repo = nil
 }
