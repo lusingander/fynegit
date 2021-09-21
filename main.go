@@ -61,7 +61,6 @@ func openGitRepository(path string) (*gogigu.Repository, error) {
 }
 
 func buildCommitGraphView(repo *gogigu.Repository) fyne.CanvasObject {
-	edges := calcEdges(repo)
 	list := widget.NewList(
 		func() int {
 			return len(repo.Nodes)
@@ -70,7 +69,7 @@ func buildCommitGraphView(repo *gogigu.Repository) fyne.CanvasObject {
 			return commitGraphItem(repo)
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
-			updateCommitGraphItem(edges, repo, repo.Nodes[id], item)
+			updateCommitGraphItem(repo, repo.Nodes[id], item)
 		},
 	)
 	return list
@@ -98,16 +97,16 @@ func commitGraphItem(repo *gogigu.Repository) fyne.CanvasObject {
 	)
 }
 
-func updateCommitGraphItem(edges map[int][]*edge, repo *gogigu.Repository, node *gogigu.Node, item fyne.CanvasObject) {
+func updateCommitGraphItem(repo *gogigu.Repository, node *gogigu.Node, item fyne.CanvasObject) {
 	objs := item.(*fyne.Container).Objects
-	objs[0] = calcCommitGraphTree(edges, repo, node, item)
+	objs[0] = calcCommitGraphTree(repo, node, item)
 	objs[1].(*widget.Label).SetText(summaryMessage(node))
 	objs[2].(*widget.Label).SetText(shortHash(node))
 	objs[3].(*widget.Label).SetText(authorName(node))
 	objs[4].(*widget.Label).SetText(commitedAt(node))
 }
 
-func calcCommitGraphTree(edges map[int][]*edge, repo *gogigu.Repository, node *gogigu.Node, item fyne.CanvasObject) fyne.CanvasObject {
+func calcCommitGraphTree(repo *gogigu.Repository, node *gogigu.Node, item fyne.CanvasObject) fyne.CanvasObject {
 	graphAreaWidth := float32((repo.MaxPosX() + 1) * graphWidthUnit)
 	graphAreaHeight := item.Size().Height
 
@@ -116,9 +115,9 @@ func calcCommitGraphTree(edges map[int][]*edge, repo *gogigu.Repository, node *g
 	circleRadius := float32(graphCircleRadius)
 
 	objs := make([]fyne.CanvasObject, 0)
-	for _, edge := range edges[node.PosY()] {
+	for _, edge := range repo.Edges(node.PosY()) {
 		createEdge := func(leftOrTop fyne.Position, length float32, vertical bool) *canvas.Line {
-			e := canvas.NewLine(graph.GetColor(edge.posX))
+			e := canvas.NewLine(graph.GetColor(edge.PosX))
 			e.StrokeWidth = 2
 			e.Move(leftOrTop)
 			if vertical {
@@ -128,48 +127,48 @@ func calcCommitGraphTree(edges map[int][]*edge, repo *gogigu.Repository, node *g
 			}
 			return e
 		}
-		switch edge.edgeType {
-		case straight:
+		switch edge.EdgeType {
+		case gogigu.EdgeStraight:
 			e := createEdge(
-				fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, 0),
+				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, 0),
 				graphAreaHeight,
 				true,
 			)
 			objs = append(objs, e)
-		case up:
+		case gogigu.EdgeUp:
 			e := createEdge(
 				fyne.NewPos(posX, 0),
 				posY-circleRadius,
 				true,
 			)
 			objs = append(objs, e)
-		case down:
+		case gogigu.EdgeDown:
 			e := createEdge(
 				fyne.NewPos(posX, posY+circleRadius),
 				posY-circleRadius,
 				true,
 			)
 			objs = append(objs, e)
-		case branch:
+		case gogigu.EdgeBranch:
 			e1 := createEdge(
 				fyne.NewPos(posX+circleRadius, posY),
-				float32((edge.posX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
+				float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
 				false,
 			)
 			e2 := createEdge(
-				fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, 0),
+				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, 0),
 				graphAreaHeight/2,
 				true,
 			)
 			objs = append(objs, e1, e2)
-		case merge:
+		case gogigu.EdgeMerge:
 			e1 := createEdge(
 				fyne.NewPos(posX+circleRadius, posY),
-				float32((edge.posX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
+				float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
 				false,
 			)
 			e2 := createEdge(
-				fyne.NewPos((float32(edge.posX)+0.5)*graphWidthUnit, graphAreaHeight/2),
+				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, graphAreaHeight/2),
 				graphAreaHeight/2,
 				true,
 			)
@@ -212,52 +211,4 @@ func authorName(node *gogigu.Node) string {
 
 func commitedAt(node *gogigu.Node) string {
 	return node.Commit.Committer.When.Format(dateTimeFormat)
-}
-
-type edgeType int
-
-const (
-	straight edgeType = iota
-	up
-	down
-	branch
-	merge
-)
-
-type edge struct {
-	edgeType
-	posX int
-}
-
-func calcEdges(repo *gogigu.Repository) map[int][]*edge {
-	edges := make(map[int][]*edge)
-	for i := range repo.Nodes {
-		edges[i] = make([]*edge, 0)
-	}
-	for _, n := range repo.Nodes {
-		h := n.Hash()
-		for _, child := range repo.Children(h) {
-			edges[n.PosY()] = append(edges[n.PosY()], &edge{up, n.PosX()})
-			if n.PosX() == child.PosX() {
-				for y := n.PosY() - 1; y > child.PosY(); y-- {
-					edges[y] = append(edges[y], &edge{straight, n.PosX()})
-				}
-			} else if n.PosX() < child.PosX() {
-				edges[n.PosY()] = append(edges[n.PosY()], &edge{branch, child.PosX()})
-				for y := n.PosY() - 1; y > child.PosY(); y-- {
-					edges[y] = append(edges[y], &edge{straight, child.PosX()})
-				}
-			}
-		}
-		for _, parent := range repo.Parents(h) {
-			edges[n.PosY()] = append(edges[n.PosY()], &edge{down, n.PosX()})
-			if n.PosX() < parent.PosX() {
-				edges[n.PosY()] = append(edges[n.PosY()], &edge{merge, parent.PosX()})
-				for y := n.PosY() + 1; y < parent.PosY(); y++ {
-					edges[y] = append(edges[y], &edge{straight, parent.PosX()})
-				}
-			}
-		}
-	}
-	return edges
 }

@@ -5,8 +5,10 @@ go 1.17
 require (
 	fyne.io/fyne/v2 v2.1.0
 	github.com/go-git/go-git/v5 v5.4.2
-	github.com/lusingander/gogigu v0.0.0-20210920142616-152d538ba76e
+	github.com/lusingander/gogigu v0.0.0-20210921104130-206f46fc18ce
 )
+
+// replace github.com/lusingander/gogigu => ../gogigu
 
 require (
 	github.com/Microsoft/go-winio v0.5.0 // indirect
