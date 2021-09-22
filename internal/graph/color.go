@@ -13,6 +13,6 @@ var (
 	}
 )
 
-func GetColor(pos int) color.Color {
+func getColor(pos int) color.Color {
 	return colors[pos%len(colors)]
 }
