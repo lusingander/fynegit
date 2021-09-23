@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	graphWidthUnit    = 30
+	graphWidthUnit    = 20
 	graphCircleRadius = 5
 )
 
@@ -28,63 +28,44 @@ func CalcCommitGraphTreeRow(repo *gogigu.Repository, node *gogigu.Node, height f
 
 	objs := make([]fyne.CanvasObject, 0)
 	for _, edge := range repo.Edges(node.PosY()) {
-		createEdge := func(leftOrTop fyne.Position, length float32, vertical bool) *canvas.Line {
-			e := canvas.NewLine(getColor(edge.PosX))
-			e.StrokeWidth = 2
-			e.Move(leftOrTop)
-			if vertical {
-				e.Resize(fyne.NewSize(0, length))
-			} else {
-				e.Resize(fyne.NewSize(length, 0))
-			}
-			return e
-		}
 		switch edge.EdgeType {
 		case gogigu.EdgeStraight:
-			e := createEdge(
+			e := createStraightEdge(
+				edge,
 				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, 0),
 				graphAreaHeight,
-				true,
 			)
 			objs = append(objs, e)
 		case gogigu.EdgeUp:
-			e := createEdge(
+			e := createStraightEdge(
+				edge,
 				fyne.NewPos(posX, 0),
 				posY-circleRadius,
-				true,
 			)
 			objs = append(objs, e)
 		case gogigu.EdgeDown:
-			e := createEdge(
+			e := createStraightEdge(
+				edge,
 				fyne.NewPos(posX, posY+circleRadius),
 				posY-circleRadius,
-				true,
 			)
 			objs = append(objs, e)
 		case gogigu.EdgeBranch:
-			e1 := createEdge(
+			e := createEdge(
+				edge,
 				fyne.NewPos(posX+circleRadius, posY),
 				float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
-				false,
+				-graphAreaHeight/2,
 			)
-			e2 := createEdge(
-				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, 0),
-				graphAreaHeight/2,
-				true,
-			)
-			objs = append(objs, e1, e2)
+			objs = append(objs, e)
 		case gogigu.EdgeMerge:
-			e1 := createEdge(
+			e := createEdge(
+				edge,
 				fyne.NewPos(posX+circleRadius, posY),
 				float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
-				false,
-			)
-			e2 := createEdge(
-				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, graphAreaHeight/2),
 				graphAreaHeight/2,
-				true,
 			)
-			objs = append(objs, e1, e2)
+			objs = append(objs, e)
 		}
 	}
 
@@ -96,6 +77,18 @@ func CalcCommitGraphTreeRow(repo *gogigu.Repository, node *gogigu.Node, height f
 	graph.Resize(fyne.NewSize(graphAreaWidth, graphAreaHeight))
 
 	return graph
+}
+
+func createEdge(edge *gogigu.Edge, leftOrTop fyne.Position, w, h float32) *canvas.Line {
+	e := canvas.NewLine(getColor(edge.PosX))
+	e.StrokeWidth = 2
+	e.Move(leftOrTop)
+	e.Resize(fyne.NewSize(w, h))
+	return e
+}
+
+func createStraightEdge(edge *gogigu.Edge, leftOrTop fyne.Position, length float32) *canvas.Line {
+	return createEdge(edge, leftOrTop, 0, length)
 }
 
 func createDummyBackgroundRectangle(width, height float32) fyne.CanvasObject {
