@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"github.com/lusingander/fynegit/internal/repository"
 	"github.com/lusingander/gogigu"
 )
 
@@ -14,12 +15,12 @@ const (
 	graphCircleRadius = 5
 )
 
-func CalcCommitGraphAreaWidth(repo *gogigu.Repository) float32 {
-	return float32((repo.MaxPosX() + 1) * graphWidthUnit)
+func CalcCommitGraphAreaWidth(rm *repository.RepositoryManager) float32 {
+	return float32((rm.MaxPosX() + 1) * graphWidthUnit)
 }
 
-func CalcCommitGraphTreeRow(repo *gogigu.Repository, node *gogigu.Node, height float32) fyne.CanvasObject {
-	graphAreaWidth := CalcCommitGraphAreaWidth(repo)
+func CalcCommitGraphTreeRow(rm *repository.RepositoryManager, node *gogigu.Node, height float32) fyne.CanvasObject {
+	graphAreaWidth := CalcCommitGraphAreaWidth(rm)
 	graphAreaHeight := height
 
 	posX := float32((node.PosX()+1)*graphWidthUnit) - (graphWidthUnit / 2)
@@ -28,7 +29,7 @@ func CalcCommitGraphTreeRow(repo *gogigu.Repository, node *gogigu.Node, height f
 
 	objs := make([]fyne.CanvasObject, 0)
 
-	for _, edge := range repo.Edges(node.PosY()) {
+	for _, edge := range rm.Edges(node.PosY()) {
 		e := createCommitTreeEdge(node, edge, graphAreaWidth, graphAreaHeight, posX, posY, circleRadius)
 		objs = append(objs, e)
 	}

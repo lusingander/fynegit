@@ -20,20 +20,21 @@ const (
 )
 
 var (
-	defaultWindowSize = fyne.NewSize(1200, 600)
+	defaultWindowSize = fyne.NewSize(1400, 800)
 )
 
 type manager struct {
 	fyne.Window
-	repo *gogigu.Repository
+	rm *repository.RepositoryManager
 
 	*commitDetailView
+	*sideMenuView
 }
 
-func Start(w fyne.Window, repo *gogigu.Repository) {
+func Start(w fyne.Window, rm *repository.RepositoryManager) {
 	m := &manager{
 		Window:           w,
-		repo:             repo,
+		rm:               rm,
 		commitDetailView: nil,
 	}
 	m.SetMainMenu(m.buildMainMenu())
@@ -43,16 +44,21 @@ func Start(w fyne.Window, repo *gogigu.Repository) {
 }
 
 func (m *manager) buildContent() fyne.CanvasObject {
-	if m.repo == nil {
+	if m.rm == nil {
 		return m.buildEmptyView()
 	}
 
-	split := container.NewVSplit(
+	vs := container.NewVSplit(
 		m.buildCommitGraphView(),
 		m.buildCommitDetailView(),
 	)
-	split.SetOffset(0.6)
-	return split
+	vs.SetOffset(0.6)
+	hs := container.NewHSplit(
+		m.buildSideMenuView(),
+		vs,
+	)
+	hs.SetOffset(0.15)
+	return hs
 }
 
 func (m *manager) buildMainMenu() *fyne.MainMenu {
@@ -80,46 +86,46 @@ func (m *manager) showRepositoryOpenDialog() {
 		if lu == nil {
 			return // canceled
 		}
-		repo, err := repository.OpenGitRepository(lu.String()[7:]) // `file://`
+		rm, err := repository.OpenGitRepository(lu.String()[7:]) // `file://`
 		if err != nil {
 			dialog.ShowError(err, m.Window)
 			return
 		}
-		m.repo = repo
+		m.rm = rm
 		m.SetContent(m.buildContent())
 	}
 	dialog.ShowFolderOpen(callback, m.Window)
 }
 
 func (m *manager) closeRepository() {
-	if m.repo == nil {
+	if m.rm == nil {
 		return
 	}
-	m.repo = nil
+	m.rm = nil
 	m.SetContent(m.buildContent())
 }
 
 func (m *manager) buildCommitGraphView() fyne.CanvasObject {
-	if m.repo == nil {
-		log.Fatalln("m.repo must not be nil")
+	if m.rm == nil {
+		log.Fatalln("m.rm must not be nil")
 	}
 	list := widget.NewList(
 		func() int {
-			return len(m.repo.Nodes)
+			return len(m.rm.Nodes)
 		},
 		func() fyne.CanvasObject {
-			return commitGraphItem(m.repo)
+			return commitGraphItem(m.rm)
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
-			updateCommitGraphItem(m.repo, m.repo.Nodes[id], item)
+			updateCommitGraphItem(m.rm, m.rm.Nodes[id], item)
 		},
 	)
 	list.OnSelected = m.updateCommitDetailView
 	return list
 }
 
-func commitGraphItem(repo *gogigu.Repository) fyne.CanvasObject {
-	graphAreaWidth := graph.CalcCommitGraphAreaWidth(repo)
+func commitGraphItem(rm *repository.RepositoryManager) fyne.CanvasObject {
+	graphAreaWidth := graph.CalcCommitGraphAreaWidth(rm)
 	graphArea := widget.NewLabel("")
 	msg := widget.NewLabel("commit message")
 	hash := widget.NewLabel("hash")
@@ -140,9 +146,9 @@ func commitGraphItem(repo *gogigu.Repository) fyne.CanvasObject {
 	)
 }
 
-func updateCommitGraphItem(repo *gogigu.Repository, node *gogigu.Node, item fyne.CanvasObject) {
+func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, item fyne.CanvasObject) {
 	objs := item.(*fyne.Container).Objects
-	objs[0] = graph.CalcCommitGraphTreeRow(repo, node, item.Size().Height)
+	objs[0] = graph.CalcCommitGraphTreeRow(rm, node, item.Size().Height)
 	objs[1].(*widget.Label).SetText(summaryMessage(node))
 	objs[2].(*widget.Label).SetText(shortHash(node))
 	objs[3].(*widget.Label).SetText(authorName(node))
@@ -211,7 +217,7 @@ type commitDetailView struct {
 }
 
 func (m *manager) updateCommitDetailView(id widget.ListItemID) {
-	n := m.repo.Nodes[id]
+	n := m.rm.Nodes[id]
 	v := m.commitDetailView
 	v.authorItemNameLabel.Text = n.Commit.Author.Name
 	v.authorItemEmailLabel.Text = n.Commit.Author.Email
@@ -236,7 +242,7 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 }
 
 func (m *manager) parentsShortHashes(n *gogigu.Node) string {
-	ps := m.repo.Parents(n.Hash())
+	ps := m.rm.Parents(n.Hash())
 	hs := make([]string, len(ps))
 	for i, p := range ps {
 		hs[i] = p.ShortHash()
@@ -250,4 +256,21 @@ func parseCommitMessage(n *gogigu.Node) (string, string) {
 		return msgs[0], msgs[1]
 	}
 	return msgs[0], ""
+}
+
+type sideMenuView struct {
+	*widget.Tree
+}
+
+func (m *manager) buildSideMenuView() fyne.CanvasObject {
+	v := &sideMenuView{}
+	tree := widget.NewTreeWithStrings(map[string][]string{
+		"":         {"Branches", "Remotes", "Tags"},
+		"Branches": m.rm.BranchNames(),
+		"Remotes":  m.rm.RemoteBranchNames(),
+		"Tags":     m.rm.TagNames(),
+	})
+	v.Tree = tree
+	m.sideMenuView = v
+	return v.Tree
 }
