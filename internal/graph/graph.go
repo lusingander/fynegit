@@ -27,46 +27,10 @@ func CalcCommitGraphTreeRow(repo *gogigu.Repository, node *gogigu.Node, height f
 	circleRadius := float32(graphCircleRadius)
 
 	objs := make([]fyne.CanvasObject, 0)
+
 	for _, edge := range repo.Edges(node.PosY()) {
-		switch edge.EdgeType {
-		case gogigu.EdgeStraight:
-			e := createStraightEdge(
-				edge,
-				fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, 0),
-				graphAreaHeight,
-			)
-			objs = append(objs, e)
-		case gogigu.EdgeUp:
-			e := createStraightEdge(
-				edge,
-				fyne.NewPos(posX, 0),
-				posY-circleRadius,
-			)
-			objs = append(objs, e)
-		case gogigu.EdgeDown:
-			e := createStraightEdge(
-				edge,
-				fyne.NewPos(posX, posY+circleRadius),
-				posY-circleRadius,
-			)
-			objs = append(objs, e)
-		case gogigu.EdgeBranch:
-			e := createEdge(
-				edge,
-				fyne.NewPos(posX+circleRadius, posY),
-				float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
-				-graphAreaHeight/2,
-			)
-			objs = append(objs, e)
-		case gogigu.EdgeMerge:
-			e := createEdge(
-				edge,
-				fyne.NewPos(posX+circleRadius, posY),
-				float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
-				graphAreaHeight/2,
-			)
-			objs = append(objs, e)
-		}
+		e := createCommitTreeEdge(node, edge, graphAreaWidth, graphAreaHeight, posX, posY, circleRadius)
+		objs = append(objs, e)
 	}
 
 	rect := createDummyBackgroundRectangle(graphAreaWidth, graphAreaHeight)
@@ -79,9 +43,51 @@ func CalcCommitGraphTreeRow(repo *gogigu.Repository, node *gogigu.Node, height f
 	return graph
 }
 
+func createCommitTreeEdge(node *gogigu.Node, edge *gogigu.Edge, graphAreaWidth, graphAreaHeight, posX, posY, circleRadius float32) *canvas.Line {
+	switch edge.EdgeType {
+	case gogigu.EdgeStraight:
+		return createStraightEdge(
+			edge,
+			fyne.NewPos((float32(edge.PosX)+0.5)*graphWidthUnit, 0),
+			graphAreaHeight,
+		)
+	case gogigu.EdgeUp:
+		return createStraightEdge(
+			edge,
+			fyne.NewPos(posX, 0),
+			posY-circleRadius,
+		)
+	case gogigu.EdgeDown:
+		return createStraightEdge(
+			edge,
+			fyne.NewPos(posX, posY+circleRadius),
+			posY-circleRadius,
+		)
+	case gogigu.EdgeBranch:
+		return createEdge(
+			edge,
+			fyne.NewPos(posX+circleRadius, posY),
+			float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
+			-graphAreaHeight/2,
+		)
+	case gogigu.EdgeMerge:
+		return createEdge(
+			edge,
+			fyne.NewPos(posX+circleRadius, posY),
+			float32((edge.PosX-node.PosX()-1)*graphWidthUnit+graphWidthUnit-int(circleRadius)),
+			graphAreaHeight/2,
+		)
+	default:
+		return nil
+	}
+}
+
 func createEdge(edge *gogigu.Edge, leftOrTop fyne.Position, w, h float32) *canvas.Line {
-	e := canvas.NewLine(getColor(edge.PosX))
-	e.StrokeWidth = 2
+	color := getColor(edge.PosX)
+	e := &canvas.Line{
+		StrokeColor: color,
+		StrokeWidth: 2,
+	}
 	e.Move(leftOrTop)
 	e.Resize(fyne.NewSize(w, h))
 	return e
