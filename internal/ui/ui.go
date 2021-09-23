@@ -26,18 +26,33 @@ var (
 type manager struct {
 	fyne.Window
 	repo *gogigu.Repository
+
+	*commitDetailView
 }
 
 func Start(w fyne.Window, repo *gogigu.Repository) {
-	m := &manager{w, repo}
-	if repo == nil {
-		m.SetContent(m.buildEmptyView())
-	} else {
-		m.SetContent(m.buildCommitGraphView())
+	m := &manager{
+		Window:           w,
+		repo:             repo,
+		commitDetailView: nil,
 	}
-	m.Resize(defaultWindowSize)
 	m.SetMainMenu(m.buildMainMenu())
+	m.SetContent(m.buildContent())
+	m.Resize(defaultWindowSize)
 	m.ShowAndRun()
+}
+
+func (m *manager) buildContent() fyne.CanvasObject {
+	if m.repo == nil {
+		return m.buildEmptyView()
+	}
+
+	split := container.NewVSplit(
+		m.buildCommitGraphView(),
+		m.buildCommitDetailView(),
+	)
+	split.SetOffset(0.6)
+	return split
 }
 
 func (m *manager) buildMainMenu() *fyne.MainMenu {
@@ -99,6 +114,7 @@ func (m *manager) buildCommitGraphView() fyne.CanvasObject {
 			updateCommitGraphItem(m.repo, m.repo.Nodes[id], item)
 		},
 	)
+	list.OnSelected = m.updateCommitDetailView
 	return list
 }
 
@@ -151,4 +167,61 @@ func authorName(node *gogigu.Node) string {
 
 func commitedAt(node *gogigu.Node) string {
 	return node.Commit.Author.When.Format(dateTimeFormat)
+}
+
+func (m *manager) buildCommitDetailView() fyne.CanvasObject {
+	v := &commitDetailView{
+		authorItemNameLabel:  widget.NewLabel(""),
+		authorItemEmailLabel: widget.NewLabel(""),
+		authorItemWhenLabel:  widget.NewLabel(""),
+		hashItemLabel:        widget.NewLabel(""),
+		parentsHashItemLabel: widget.NewLabel(""),
+	}
+	authorItemDetail := container.NewVBox(
+		container.NewHBox(
+			v.authorItemNameLabel,
+			v.authorItemEmailLabel,
+		),
+		v.authorItemWhenLabel,
+	)
+	authorItem := widget.NewFormItem("Author", authorItemDetail)
+	parentsHashItem := widget.NewFormItem("Parents", v.parentsHashItemLabel)
+	hashItem := widget.NewFormItem("SHA", v.hashItemLabel)
+	v.Form = widget.NewForm(
+		authorItem,
+		hashItem,
+		parentsHashItem,
+	)
+	m.commitDetailView = v
+	return container.NewVScroll(v.Form)
+}
+
+type commitDetailView struct {
+	*widget.Form
+
+	authorItemNameLabel  *widget.Label
+	authorItemEmailLabel *widget.Label
+	authorItemWhenLabel  *widget.Label
+	hashItemLabel        *widget.Label
+	parentsHashItemLabel *widget.Label
+}
+
+func (m *manager) updateCommitDetailView(id widget.ListItemID) {
+	n := m.repo.Nodes[id]
+	v := m.commitDetailView
+	v.authorItemNameLabel.Text = n.Commit.Author.Name
+	v.authorItemEmailLabel.Text = n.Commit.Author.Email
+	v.authorItemWhenLabel.Text = n.Commit.Author.When.Format(dateTimeFormat)
+	v.hashItemLabel.Text = n.Hash()
+	v.parentsHashItemLabel.Text = m.parentsShortHashes(n)
+	v.Form.Refresh()
+}
+
+func (m *manager) parentsShortHashes(n *gogigu.Node) string {
+	ps := m.repo.Parents(n.Hash())
+	hs := make([]string, len(ps))
+	for i, p := range ps {
+		hs[i] = p.ShortHash()
+	}
+	return strings.Join(hs, " ")
 }
