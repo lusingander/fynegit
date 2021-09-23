@@ -176,6 +176,7 @@ func (m *manager) buildCommitDetailView() fyne.CanvasObject {
 		authorItemWhenLabel:  widget.NewLabel(""),
 		hashItemLabel:        widget.NewLabel(""),
 		parentsHashItemLabel: widget.NewLabel(""),
+		messageItem:          widget.NewRichText(),
 	}
 	authorItemDetail := container.NewVBox(
 		container.NewHBox(
@@ -187,10 +188,12 @@ func (m *manager) buildCommitDetailView() fyne.CanvasObject {
 	authorItem := widget.NewFormItem("Author", authorItemDetail)
 	parentsHashItem := widget.NewFormItem("Parents", v.parentsHashItemLabel)
 	hashItem := widget.NewFormItem("SHA", v.hashItemLabel)
+	messageItem := widget.NewFormItem("", v.messageItem)
 	v.Form = widget.NewForm(
 		authorItem,
 		hashItem,
 		parentsHashItem,
+		messageItem,
 	)
 	m.commitDetailView = v
 	return container.NewVScroll(v.Form)
@@ -204,6 +207,7 @@ type commitDetailView struct {
 	authorItemWhenLabel  *widget.Label
 	hashItemLabel        *widget.Label
 	parentsHashItemLabel *widget.Label
+	messageItem          *widget.RichText
 }
 
 func (m *manager) updateCommitDetailView(id widget.ListItemID) {
@@ -214,6 +218,20 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 	v.authorItemWhenLabel.Text = n.Commit.Author.When.Format(dateTimeFormat)
 	v.hashItemLabel.Text = n.Hash()
 	v.parentsHashItemLabel.Text = m.parentsShortHashes(n)
+	msgHead, msgTail := parseCommitMessage(n)
+	msgHeadSegment := &widget.TextSegment{
+		Style: widget.RichTextStyleSubHeading,
+		Text:  msgHead,
+	}
+	msgTailSegment := &widget.TextSegment{
+		Style: widget.RichTextStyleInline,
+		Text:  msgTail,
+	}
+	v.messageItem.Segments = []widget.RichTextSegment{
+		&widget.SeparatorSegment{},
+		msgHeadSegment,
+		msgTailSegment,
+	}
 	v.Form.Refresh()
 }
 
@@ -224,4 +242,12 @@ func (m *manager) parentsShortHashes(n *gogigu.Node) string {
 		hs[i] = p.ShortHash()
 	}
 	return strings.Join(hs, " ")
+}
+
+func parseCommitMessage(n *gogigu.Node) (string, string) {
+	msgs := strings.SplitN(n.Commit.Message, "\n", 2)
+	if len(msgs) > 1 {
+		return msgs[0], msgs[1]
+	}
+	return msgs[0], ""
 }
