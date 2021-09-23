@@ -86,7 +86,7 @@ func (m *manager) showRepositoryOpenDialog() {
 			return
 		}
 		m.repo = repo
-		m.SetContent(m.buildCommitGraphView())
+		m.SetContent(m.buildContent())
 	}
 	dialog.ShowFolderOpen(callback, m.Window)
 }
@@ -95,8 +95,8 @@ func (m *manager) closeRepository() {
 	if m.repo == nil {
 		return
 	}
-	m.SetContent(m.buildEmptyView())
 	m.repo = nil
+	m.SetContent(m.buildContent())
 }
 
 func (m *manager) buildCommitGraphView() fyne.CanvasObject {
