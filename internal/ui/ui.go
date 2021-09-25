@@ -308,7 +308,7 @@ func ellipsisText(src string, maxWidth float32) string {
 			ptr = (lower + ptr) / 2
 		}
 		c += 1
-		if c >= 10 {
+		if c >= 6 {
 			return s + tail
 		}
 	}
