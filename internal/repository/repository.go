@@ -70,7 +70,7 @@ func OpenGitRepository(path string) (*RepositoryManager, error) {
 		return nil, err
 	}
 
-	repo, err := gogigu.Calculate(src)
+	repo, err := gogigu.Calculate(src, &gogigu.Option{Sort: gogigu.CommitDate})
 	if err != nil {
 		return nil, err
 	}
