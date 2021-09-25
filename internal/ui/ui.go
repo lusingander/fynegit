@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -15,8 +16,11 @@ import (
 )
 
 const (
-	dateTimeFormat   = "2006/01/02 15:04:05"
-	messageMaxLength = 80
+	dateTimeFormat = "2006/01/02 15:04:05"
+
+	graphMessageColumnWidth = 500.
+	graphHashColumnWidth    = 80.
+	graphAuthorColumnWidth  = 160.
 )
 
 var (
@@ -131,7 +135,7 @@ func commitGraphItem(rm *repository.RepositoryManager) fyne.CanvasObject {
 	hash := widget.NewLabel("hash")
 	author := widget.NewLabel("author")
 	committedAt := widget.NewLabel("2006/01/02 15:04:05")
-	var msgW, hashW, authorW float32 = 500, 100, 200
+	var msgW, hashW, authorW float32 = graphMessageColumnWidth, graphHashColumnWidth, graphAuthorColumnWidth
 	graphArea.Move(fyne.NewPos(0, 0))
 	msg.Move(fyne.NewPos(graphArea.Position().X+graphAreaWidth, 0))
 	hash.Move(fyne.NewPos(msg.Position().X+msgW, 0))
@@ -157,10 +161,7 @@ func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, 
 
 func summaryMessage(node *gogigu.Node) string {
 	msg := strings.Split(node.Commit.Message, "\n")[0]
-	if len(msg) > messageMaxLength {
-		msg = msg[:messageMaxLength]
-	}
-	return msg
+	return ellipsisText(msg, graphMessageColumnWidth)
 }
 
 func shortHash(node *gogigu.Node) string {
@@ -168,7 +169,7 @@ func shortHash(node *gogigu.Node) string {
 }
 
 func authorName(node *gogigu.Node) string {
-	return node.Commit.Author.Name
+	return ellipsisText(node.Commit.Author.Name, graphAuthorColumnWidth)
 }
 
 func commitedAt(node *gogigu.Node) string {
@@ -273,4 +274,46 @@ func (m *manager) buildSideMenuView() fyne.CanvasObject {
 	v.Tree = tree
 	m.sideMenuView = v
 	return v.Tree
+}
+
+func ellipsisText(src string, maxWidth float32) string {
+	buf := textWidth("__")
+	if textWidth(src) < maxWidth-buf {
+		return src
+	}
+
+	tail := "..."
+	tailBuf := textWidth(tail) + buf
+	if maxWidth < tailBuf {
+		panic(fmt.Errorf("maxWidth %v must be less than %v", maxWidth, tailBuf))
+	}
+
+	maxW := maxWidth - tailBuf
+	minBuf := textWidth("__")
+	rs := []rune(src)
+
+	lower, upper := 0, len(rs)
+	ptr := upper / 2
+	c := 0
+	for {
+		s := string(rs[0:ptr])
+		w := textWidth(s)
+		if maxW-minBuf <= w && w <= maxW {
+			return s + tail
+		} else if w < maxW-minBuf {
+			lower = ptr
+			ptr = (ptr + upper) / 2
+		} else if maxW < w {
+			upper = ptr
+			ptr = (lower + ptr) / 2
+		}
+		c += 1
+		if c >= 10 {
+			return s + tail
+		}
+	}
+}
+
+func textWidth(s string) float32 {
+	return fyne.MeasureText(s, theme.TextSize(), fyne.TextStyle{}).Width
 }
