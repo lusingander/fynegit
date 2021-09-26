@@ -300,6 +300,7 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 	}
 
 	messageItemRichText := widget.NewRichText()
+	messageItemRichText.Wrapping = fyne.TextWrapWord
 	msgHead, msgTail := parseCommitMessage(n)
 	msgHeadSegment := &widget.TextSegment{
 		Style: widget.RichTextStyleSubHeading,
