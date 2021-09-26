@@ -221,55 +221,34 @@ func commitedAt(node *gogigu.Node) string {
 	return node.Commit.Author.When.Format(dateTimeFormat)
 }
 
-func (m *manager) buildCommitDetailView() fyne.CanvasObject {
-	v := &commitDetailView{
-		authorItemNameLabel:  widget.NewLabel(""),
-		authorItemEmailLabel: widget.NewLabel(""),
-		authorItemWhenLabel:  widget.NewLabel(""),
-		hashItemLabel:        widget.NewLabel(""),
-		parentsHashItemLabel: widget.NewLabel(""),
-		messageItem:          widget.NewRichText(),
-	}
-	authorItemDetail := container.NewVBox(
-		container.NewHBox(
-			v.authorItemNameLabel,
-			v.authorItemEmailLabel,
-		),
-		v.authorItemWhenLabel,
-	)
-	authorItem := widget.NewFormItem("Author", authorItemDetail)
-	parentsHashItem := widget.NewFormItem("Parents", v.parentsHashItemLabel)
-	hashItem := widget.NewFormItem("SHA", v.hashItemLabel)
-	messageItem := widget.NewFormItem("", v.messageItem)
-	v.Form = widget.NewForm(
-		authorItem,
-		hashItem,
-		parentsHashItem,
-		messageItem,
-	)
-	m.commitDetailView = v
-	return container.NewVScroll(v.Form)
+type commitDetailView struct {
+	*container.Scroll
 }
 
-type commitDetailView struct {
-	*widget.Form
-
-	authorItemNameLabel  *widget.Label
-	authorItemEmailLabel *widget.Label
-	authorItemWhenLabel  *widget.Label
-	hashItemLabel        *widget.Label
-	parentsHashItemLabel *widget.Label
-	messageItem          *widget.RichText
+func (m *manager) buildCommitDetailView() fyne.CanvasObject {
+	scroll := container.NewVScroll(widget.NewLabel(""))
+	v := &commitDetailView{
+		Scroll: scroll,
+	}
+	m.commitDetailView = v
+	return v.Scroll
 }
 
 func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 	n := m.rm.Nodes[id]
-	v := m.commitDetailView
-	v.authorItemNameLabel.Text = n.Commit.Author.Name
-	v.authorItemEmailLabel.Text = n.Commit.Author.Email
-	v.authorItemWhenLabel.Text = n.Commit.Author.When.Format(dateTimeFormat)
-	v.hashItemLabel.Text = n.Hash()
-	v.parentsHashItemLabel.Text = m.parentsShortHashes(n)
+	authorItemNameLabel := widget.NewLabel(n.Commit.Author.Name)
+	authorItemEmailLabel := widget.NewLabel(n.Commit.Author.Email)
+	authorItemWhenLabel := widget.NewLabel(n.Commit.Author.When.Format(dateTimeFormat))
+	authorItemDetail := container.NewVBox(
+		container.NewHBox(
+			authorItemNameLabel,
+			authorItemEmailLabel,
+		),
+		authorItemWhenLabel,
+	)
+	hashItemLabel := widget.NewLabel(n.Hash())
+	parentsHashItemLabel := widget.NewLabel(m.parentsShortHashes(n))
+	messageItemRichText := widget.NewRichText()
 	msgHead, msgTail := parseCommitMessage(n)
 	msgHeadSegment := &widget.TextSegment{
 		Style: widget.RichTextStyleSubHeading,
@@ -279,12 +258,24 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 		Style: widget.RichTextStyleInline,
 		Text:  msgTail,
 	}
-	v.messageItem.Segments = []widget.RichTextSegment{
+	messageItemRichText.Segments = []widget.RichTextSegment{
 		&widget.SeparatorSegment{},
 		msgHeadSegment,
 		msgTailSegment,
 	}
-	v.Form.Refresh()
+	authorItem := widget.NewFormItem("Author", authorItemDetail)
+	hashItem := widget.NewFormItem("SHA", hashItemLabel)
+	parentsHashItem := widget.NewFormItem("Parents", parentsHashItemLabel)
+	messageItem := widget.NewFormItem("", messageItemRichText)
+	form := widget.NewForm(
+		authorItem,
+		hashItem,
+		parentsHashItem,
+		messageItem,
+	)
+	v := m.commitDetailView
+	v.Scroll.Content = form
+	v.Scroll.Refresh()
 }
 
 func (m *manager) parentsShortHashes(n *gogigu.Node) string {
