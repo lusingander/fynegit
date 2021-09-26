@@ -177,8 +177,38 @@ func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, 
 
 func calcCommitRefMarkers(rm *repository.RepositoryManager, node *gogigu.Node, h float32) (fyne.CanvasObject, float32) {
 	refs := rm.AllRefs(node.Hash())
-	left := graph.CalcCommitGraphAreaWidth(rm)
+	if len(refs) == 0 {
+		return container.NewWithoutLayout(), 0
+	}
+
 	markers, totalWidth := buildCommitRefMarkers(refs, h)
+
+	var wBuf, hBuf float32 = theme.Padding(), 1
+	limitWidth := graphMessageColumnWidth - wBuf*2
+	if totalWidth > limitWidth {
+		n := 1
+		for len(refs) > 0 {
+			refs = refs[:len(refs)-1]
+			markers, totalWidth = buildCommitRefMarkers(refs, h)
+			notice := fmt.Sprintf("+%d refs", n)
+			noticeSize := textSize(notice)
+			bg, fg := refsNoticeColor()
+			rect := canvas.NewRectangle(bg)
+			rectWidth := noticeSize.Width + wBuf*2
+			rectHeight := noticeSize.Height + hBuf*2
+			rect.Resize(fyne.NewSize(rectWidth, rectHeight))
+			rect.Move(fyne.NewPos(wBuf+totalWidth, (h/2)-(rectHeight/2)))
+			text := canvas.NewText(notice, fg)
+			text.Move(fyne.NewPos(rect.Position().X+wBuf, rect.Position().Y+hBuf))
+			totalWidth += rectWidth + wBuf*2
+			if totalWidth < limitWidth {
+				markers.(*fyne.Container).Objects = append(markers.(*fyne.Container).Objects, rect, text)
+				break
+			}
+			n += 1
+		}
+	}
+	left := graph.CalcCommitGraphAreaWidth(rm)
 	markers.Move(fyne.NewPos(left, 0))
 	return markers, totalWidth
 }

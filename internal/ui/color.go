@@ -13,6 +13,9 @@ var (
 	refsBranchColorFg = color.NRGBA{0, 90, 0, 255}
 	refsRemoteColorBg = color.NRGBA{200, 150, 200, 150}
 	refsRemoteColorFg = color.NRGBA{70, 0, 70, 255}
+
+	refsNoticeColorBg = color.NRGBA{200, 200, 200, 200}
+	refsNoticeColorFg = color.NRGBA{100, 100, 100, 255}
 )
 
 func refsColor(t repository.RefType) (color.Color, color.Color) {
@@ -25,4 +28,8 @@ func refsColor(t repository.RefType) (color.Color, color.Color) {
 		return refsRemoteColorBg, refsRemoteColorFg
 	}
 	return nil, nil
+}
+
+func refsNoticeColor() (color.Color, color.Color) {
+	return refsNoticeColorBg, refsNoticeColorFg
 }
