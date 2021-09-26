@@ -8,12 +8,48 @@ import (
 	"github.com/lusingander/gogigu"
 )
 
+type RefType int
+
+const (
+	Branch RefType = iota
+	RemoteBranch
+	Tag
+)
+
+type Ref struct {
+	refType RefType
+	name    string
+	hash    string
+}
+
+func (r *Ref) RefType() RefType {
+	return r.refType
+}
+
+func (r *Ref) Name() string {
+	return r.name
+}
+
 type RepositoryManager struct {
 	*gogigu.Repository
 
-	branchesMap map[string][]*Branch
-	remotesMap  map[string][]*RemoteBranch
-	tagsMap     map[string][]*Tag
+	branchesMap map[string][]*Ref
+	remotesMap  map[string][]*Ref
+	tagsMap     map[string][]*Ref
+}
+
+func (m *RepositoryManager) AllRefs(hash string) []*Ref {
+	refs := make([]*Ref, 0)
+	if ts, ok := m.tagsMap[hash]; ok {
+		refs = append(refs, ts...)
+	}
+	if bs, ok := m.branchesMap[hash]; ok {
+		refs = append(refs, bs...)
+	}
+	if rs, ok := m.remotesMap[hash]; ok {
+		refs = append(refs, rs...)
+	}
+	return refs
 }
 
 func (m *RepositoryManager) BranchNames() []string {
@@ -49,21 +85,6 @@ func (m *RepositoryManager) TagNames() []string {
 	return ret
 }
 
-type Branch struct {
-	name string
-	hash string
-}
-
-type RemoteBranch struct {
-	name string
-	hash string
-}
-
-type Tag struct {
-	name string
-	hash string
-}
-
 func OpenGitRepository(path string) (*RepositoryManager, error) {
 	src, err := git.PlainOpen(path)
 	if err != nil {
@@ -96,41 +117,44 @@ func OpenGitRepositoryFromArgs(args []string) (*RepositoryManager, error) {
 	return OpenGitRepository(args[1])
 }
 
-func getReferences(src *git.Repository) (map[string][]*Branch, map[string][]*RemoteBranch, map[string][]*Tag, error) {
+func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, map[string][]*Ref, error) {
 	iter, err := src.References()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	bm := make(map[string][]*Branch)
-	rm := make(map[string][]*RemoteBranch)
-	tm := make(map[string][]*Tag)
+	bm := make(map[string][]*Ref)
+	rm := make(map[string][]*Ref)
+	tm := make(map[string][]*Ref)
 	iter.ForEach(func(r *plumbing.Reference) error {
 		hash := r.Hash().String()
 		if r.Name().IsBranch() {
 			if _, ok := bm[hash]; !ok {
-				bm[hash] = make([]*Branch, 0)
+				bm[hash] = make([]*Ref, 0)
 			}
-			branch := &Branch{
-				name: r.Name().Short(),
-				hash: hash,
+			branch := &Ref{
+				refType: Branch,
+				name:    r.Name().Short(),
+				hash:    hash,
 			}
 			bm[hash] = append(bm[hash], branch)
 		} else if r.Name().IsRemote() {
 			if _, ok := rm[hash]; !ok {
-				rm[hash] = make([]*RemoteBranch, 0)
+				rm[hash] = make([]*Ref, 0)
 			}
-			branch := &RemoteBranch{
-				name: r.Name().Short(),
-				hash: hash,
+			remote := &Ref{
+				refType: RemoteBranch,
+				name:    r.Name().Short(),
+				hash:    hash,
 			}
-			rm[hash] = append(rm[hash], branch)
+			rm[hash] = append(rm[hash], remote)
 		} else if r.Name().IsTag() {
 			if _, ok := tm[hash]; !ok {
-				tm[hash] = make([]*Tag, 0)
+				tm[hash] = make([]*Ref, 0)
 			}
-			tag := &Tag{
-				name: r.Name().Short(),
-				hash: hash,
+			tag := &Ref{
+				refType: Tag,
+				name:    r.Name().Short(),
+				hash:    hash,
 			}
 			tm[hash] = append(tm[hash], tag)
 		}

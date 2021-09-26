@@ -2,10 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"log"
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
@@ -26,6 +28,27 @@ const (
 var (
 	defaultWindowSize = fyne.NewSize(1400, 800)
 )
+
+var (
+	refsTagColorBg    = color.NRGBA{50, 150, 150, 150}
+	refsTagColorFg    = color.NRGBA{20, 100, 100, 255}
+	refsBranchColorBg = color.NRGBA{100, 200, 100, 150}
+	refsBranchColorFg = color.NRGBA{10, 90, 10, 255}
+	refsRemoteColorBg = color.NRGBA{200, 100, 20, 150}
+	refsRemoteColorFg = color.NRGBA{100, 50, 10, 255}
+)
+
+func refsColor(t repository.RefType) (color.Color, color.Color) {
+	switch t {
+	case repository.Tag:
+		return refsTagColorBg, refsTagColorFg
+	case repository.Branch:
+		return refsBranchColorBg, refsBranchColorFg
+	case repository.RemoteBranch:
+		return refsRemoteColorBg, refsRemoteColorFg
+	}
+	return nil, nil
+}
 
 type manager struct {
 	fyne.Window
@@ -131,18 +154,21 @@ func (m *manager) buildCommitGraphView() fyne.CanvasObject {
 func commitGraphItem(rm *repository.RepositoryManager) fyne.CanvasObject {
 	graphAreaWidth := graph.CalcCommitGraphAreaWidth(rm)
 	graphArea := widget.NewLabel("")
+	refs := widget.NewLabel("")
 	msg := widget.NewLabel("commit message")
 	hash := widget.NewLabel("hash")
 	author := widget.NewLabel("author")
 	committedAt := widget.NewLabel("2006/01/02 15:04:05")
 	var msgW, hashW, authorW float32 = graphMessageColumnWidth, graphHashColumnWidth, graphAuthorColumnWidth
 	graphArea.Move(fyne.NewPos(0, 0))
+	refs.Move(fyne.NewPos(graphArea.Position().X+graphAreaWidth, 0))
 	msg.Move(fyne.NewPos(graphArea.Position().X+graphAreaWidth, 0))
 	hash.Move(fyne.NewPos(msg.Position().X+msgW, 0))
 	author.Move(fyne.NewPos(hash.Position().X+hashW, 0))
 	committedAt.Move(fyne.NewPos(author.Position().X+authorW, 0))
 	return container.NewWithoutLayout(
 		graphArea,
+		refs,
 		msg,
 		hash,
 		author,
@@ -153,15 +179,45 @@ func commitGraphItem(rm *repository.RepositoryManager) fyne.CanvasObject {
 func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, item fyne.CanvasObject) {
 	objs := item.(*fyne.Container).Objects
 	objs[0] = graph.CalcCommitGraphTreeRow(rm, node, item.Size().Height)
-	objs[1].(*widget.Label).SetText(summaryMessage(node))
-	objs[2].(*widget.Label).SetText(shortHash(node))
-	objs[3].(*widget.Label).SetText(authorName(node))
-	objs[4].(*widget.Label).SetText(commitedAt(node))
+	refs, rw := calcCommitRefs(rm, node, item.Size().Height)
+	objs[1] = refs
+	objs[2].(*widget.Label).SetText(summaryMessage(node, rw))
+	objs[3].(*widget.Label).SetText(shortHash(node))
+	objs[4].(*widget.Label).SetText(authorName(node))
+	objs[5].(*widget.Label).SetText(commitedAt(node))
 }
 
-func summaryMessage(node *gogigu.Node) string {
+func calcCommitRefs(rm *repository.RepositoryManager, node *gogigu.Node, h float32) (fyne.CanvasObject, float32) {
+	var wBuf, hBuf float32 = theme.Padding(), 1
+	left := graph.CalcCommitGraphAreaWidth(rm)
+	textSize := theme.TextSize()
+	textStyle := fyne.TextStyle{}
+	refs := rm.AllRefs(node.Hash())
+	objs := make([]fyne.CanvasObject, 0)
+	var totalWidth float32 = 0
+	for _, ref := range refs {
+		name := ref.Name()
+		bg, fg := refsColor(ref.RefType())
+		rect := &canvas.Rectangle{
+			FillColor:   bg,
+			StrokeColor: fg,
+			StrokeWidth: 1,
+		}
+		textSize := fyne.MeasureText(name, textSize, textStyle)
+		rect.Resize(fyne.NewSize(textSize.Width+wBuf*2, textSize.Height+hBuf*2))
+		rect.Move(fyne.NewPos(wBuf+left+totalWidth, (h/2)-((textSize.Height+hBuf)/2)))
+		text := canvas.NewText(name, fg)
+		text.Move(fyne.NewPos(wBuf+left+wBuf+totalWidth, (h/2)-((textSize.Height+hBuf)/2)+hBuf))
+		objs = append(objs, rect, text)
+		totalWidth += textSize.Width + wBuf*4
+	}
+	return container.NewWithoutLayout(objs...), totalWidth
+}
+
+func summaryMessage(node *gogigu.Node, refsWidth float32) string {
+	pad := strings.Repeat(" ", 120)
 	msg := strings.Split(node.Commit.Message, "\n")[0]
-	return ellipsisText(msg, graphMessageColumnWidth)
+	return cutText(pad, refsWidth) + ellipsisText(msg, graphMessageColumnWidth-refsWidth)
 }
 
 func shortHash(node *gogigu.Node) string {
@@ -310,6 +366,34 @@ func ellipsisText(src string, maxWidth float32) string {
 		c += 1
 		if c >= 6 {
 			return s + tail
+		}
+	}
+}
+
+func cutText(s string, maxWidth float32) string {
+
+	maxW := maxWidth
+	minBuf := textWidth(" ")
+	rs := []rune(s)
+
+	lower, upper := 0, len(rs)
+	ptr := upper / 2
+	c := 0
+	for {
+		s := string(rs[0:ptr])
+		w := textWidth(s)
+		if maxW-minBuf <= w && w <= maxW+minBuf {
+			return s
+		} else if w < maxW-minBuf {
+			lower = ptr
+			ptr = (ptr + upper) / 2
+		} else if maxW < w+minBuf {
+			upper = ptr
+			ptr = (lower + ptr) / 2
+		}
+		c += 1
+		if c >= 8 {
+			return s
 		}
 	}
 }
