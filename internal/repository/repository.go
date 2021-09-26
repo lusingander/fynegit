@@ -30,6 +30,10 @@ func (r *Ref) Name() string {
 	return r.name
 }
 
+func (r *Ref) Hash() string {
+	return r.hash
+}
+
 type RepositoryManager struct {
 	*gogigu.Repository
 
@@ -83,6 +87,30 @@ func (m *RepositoryManager) TagNames() []string {
 	}
 	sort.Strings(ret)
 	return ret
+}
+
+func (m *RepositoryManager) FromRefName(name string) *Ref {
+	if ref := fromRefNameFrom(m.branchesMap, name); ref != nil {
+		return ref
+	}
+	if ref := fromRefNameFrom(m.remotesMap, name); ref != nil {
+		return ref
+	}
+	if ref := fromRefNameFrom(m.tagsMap, name); ref != nil {
+		return ref
+	}
+	return nil
+}
+
+func fromRefNameFrom(refs map[string][]*Ref, name string) *Ref {
+	for _, rs := range refs {
+		for _, r := range rs {
+			if r.name == name {
+				return r
+			}
+		}
+	}
+	return nil
 }
 
 func OpenGitRepository(path string) (*RepositoryManager, error) {

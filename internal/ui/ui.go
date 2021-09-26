@@ -32,6 +32,7 @@ type manager struct {
 	fyne.Window
 	rm *repository.RepositoryManager
 
+	*commitGraphView
 	*commitDetailView
 	*sideMenuView
 }
@@ -40,7 +41,9 @@ func Start(w fyne.Window, rm *repository.RepositoryManager) {
 	m := &manager{
 		Window:           w,
 		rm:               rm,
+		commitGraphView:  nil,
 		commitDetailView: nil,
+		sideMenuView:     nil,
 	}
 	m.SetMainMenu(m.buildMainMenu())
 	m.SetContent(m.buildContent())
@@ -110,7 +113,12 @@ func (m *manager) closeRepository() {
 	m.SetContent(m.buildContent())
 }
 
+type commitGraphView struct {
+	*widget.List
+}
+
 func (m *manager) buildCommitGraphView() fyne.CanvasObject {
+	v := &commitGraphView{}
 	if m.rm == nil {
 		log.Fatalln("m.rm must not be nil")
 	}
@@ -126,6 +134,8 @@ func (m *manager) buildCommitGraphView() fyne.CanvasObject {
 		},
 	)
 	list.OnSelected = m.updateCommitDetailView
+	v.List = list
+	m.commitGraphView = v
 	return list
 }
 
@@ -306,9 +316,26 @@ func (m *manager) buildSideMenuView() fyne.CanvasObject {
 		"Remote Branches": m.rm.RemoteBranchNames(),
 		"Tags":            m.rm.TagNames(),
 	})
+	tree.OnSelected = m.selectRefRow
 	v.Tree = tree
 	m.sideMenuView = v
 	return v.Tree
+}
+
+func (m *manager) selectRefRow(name string) {
+	list := m.commitGraphView.List
+	if list == nil {
+		return
+	}
+	ref := m.rm.FromRefName(name)
+	if ref == nil {
+		return
+	}
+	refNode := m.rm.Node(ref.Hash())
+	if refNode == nil {
+		return
+	}
+	list.Select(refNode.PosY())
 }
 
 func ellipsisText(src string, maxWidth float32) string {
