@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"image/color"
 	"log"
 	"strings"
 
@@ -28,27 +27,6 @@ const (
 var (
 	defaultWindowSize = fyne.NewSize(1400, 800)
 )
-
-var (
-	refsTagColorBg    = color.NRGBA{50, 150, 150, 150}
-	refsTagColorFg    = color.NRGBA{20, 100, 100, 255}
-	refsBranchColorBg = color.NRGBA{100, 200, 100, 150}
-	refsBranchColorFg = color.NRGBA{10, 90, 10, 255}
-	refsRemoteColorBg = color.NRGBA{200, 100, 20, 150}
-	refsRemoteColorFg = color.NRGBA{100, 50, 10, 255}
-)
-
-func refsColor(t repository.RefType) (color.Color, color.Color) {
-	switch t {
-	case repository.Tag:
-		return refsTagColorBg, refsTagColorFg
-	case repository.Branch:
-		return refsBranchColorBg, refsBranchColorFg
-	case repository.RemoteBranch:
-		return refsRemoteColorBg, refsRemoteColorFg
-	}
-	return nil, nil
-}
 
 type manager struct {
 	fyne.Window
