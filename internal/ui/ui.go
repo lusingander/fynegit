@@ -190,10 +190,9 @@ func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, 
 func calcCommitRefs(rm *repository.RepositoryManager, node *gogigu.Node, h float32) (fyne.CanvasObject, float32) {
 	var wBuf, hBuf float32 = theme.Padding(), 1
 	left := graph.CalcCommitGraphAreaWidth(rm)
-	textSize := theme.TextSize()
-	textStyle := fyne.TextStyle{}
 	refs := rm.AllRefs(node.Hash())
 	objs := make([]fyne.CanvasObject, 0)
+	limitWidth := graphMessageColumnWidth - wBuf*2
 	var totalWidth float32 = 0
 	for _, ref := range refs {
 		name := ref.Name()
@@ -203,7 +202,7 @@ func calcCommitRefs(rm *repository.RepositoryManager, node *gogigu.Node, h float
 			StrokeColor: fg,
 			StrokeWidth: 1,
 		}
-		textSize := fyne.MeasureText(name, textSize, textStyle)
+		textSize := textSize(name)
 		rect.Resize(fyne.NewSize(textSize.Width+wBuf*2, textSize.Height+hBuf*2))
 		rect.Move(fyne.NewPos(wBuf+left+totalWidth, (h/2)-((textSize.Height+hBuf)/2)))
 		text := canvas.NewText(name, fg)
@@ -211,13 +210,15 @@ func calcCommitRefs(rm *repository.RepositoryManager, node *gogigu.Node, h float
 		objs = append(objs, rect, text)
 		totalWidth += textSize.Width + wBuf*4
 	}
+	if totalWidth > limitWidth {
+		panic(fmt.Errorf("total: %v, limit: %v", totalWidth, limitWidth))
+	}
 	return container.NewWithoutLayout(objs...), totalWidth
 }
 
 func summaryMessage(node *gogigu.Node, refsWidth float32) string {
-	pad := strings.Repeat(" ", 120)
 	msg := strings.Split(node.Commit.Message, "\n")[0]
-	return cutText(pad, refsWidth) + ellipsisText(msg, graphMessageColumnWidth-refsWidth)
+	return dummyPaddingSpaces(refsWidth) + ellipsisText(msg, graphMessageColumnWidth-refsWidth)
 }
 
 func shortHash(node *gogigu.Node) string {
@@ -344,60 +345,6 @@ func ellipsisText(src string, maxWidth float32) string {
 		panic(fmt.Errorf("maxWidth %v must be less than %v", maxWidth, tailBuf))
 	}
 
-	maxW := maxWidth - tailBuf
-	minBuf := textWidth("__")
-	rs := []rune(src)
-
-	lower, upper := 0, len(rs)
-	ptr := upper / 2
-	c := 0
-	for {
-		s := string(rs[0:ptr])
-		w := textWidth(s)
-		if maxW-minBuf <= w && w <= maxW {
-			return s + tail
-		} else if w < maxW-minBuf {
-			lower = ptr
-			ptr = (ptr + upper) / 2
-		} else if maxW < w {
-			upper = ptr
-			ptr = (lower + ptr) / 2
-		}
-		c += 1
-		if c >= 6 {
-			return s + tail
-		}
-	}
-}
-
-func cutText(s string, maxWidth float32) string {
-
-	maxW := maxWidth
-	minBuf := textWidth(" ")
-	rs := []rune(s)
-
-	lower, upper := 0, len(rs)
-	ptr := upper / 2
-	c := 0
-	for {
-		s := string(rs[0:ptr])
-		w := textWidth(s)
-		if maxW-minBuf <= w && w <= maxW+minBuf {
-			return s
-		} else if w < maxW-minBuf {
-			lower = ptr
-			ptr = (ptr + upper) / 2
-		} else if maxW < w+minBuf {
-			upper = ptr
-			ptr = (lower + ptr) / 2
-		}
-		c += 1
-		if c >= 8 {
-			return s
-		}
-	}
-}
-
-func textWidth(s string) float32 {
-	return fyne.MeasureText(s, theme.TextSize(), fyne.TextStyle{}).Width
+	cut := cutText(src, maxWidth-tailBuf, buf, 0, 6)
+	return cut + tail
 }
