@@ -167,7 +167,7 @@ func commitGraphItem(rm *repository.RepositoryManager) fyne.CanvasObject {
 func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, item fyne.CanvasObject) {
 	objs := item.(*fyne.Container).Objects
 	objs[0] = graph.CalcCommitGraphTreeRow(rm, node, item.Size().Height)
-	refs, rw := calcCommitRefs(rm, node, item.Size().Height)
+	refs, rw := calcCommitRefMarkers(rm, node, item.Size().Height)
 	objs[1] = refs
 	objs[2].(*widget.Label).SetText(summaryMessage(node, rw))
 	objs[3].(*widget.Label).SetText(shortHash(node))
@@ -175,7 +175,7 @@ func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, 
 	objs[5].(*widget.Label).SetText(commitedAt(node))
 }
 
-func calcCommitRefs(rm *repository.RepositoryManager, node *gogigu.Node, h float32) (fyne.CanvasObject, float32) {
+func calcCommitRefMarkers(rm *repository.RepositoryManager, node *gogigu.Node, h float32) (fyne.CanvasObject, float32) {
 	var wBuf, hBuf float32 = theme.Padding(), 1
 	left := graph.CalcCommitGraphAreaWidth(rm)
 	refs := rm.AllRefs(node.Hash())
@@ -236,6 +236,8 @@ func (m *manager) buildCommitDetailView() fyne.CanvasObject {
 
 func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 	n := m.rm.Nodes[id]
+	form := widget.NewForm()
+
 	authorItemNameLabel := widget.NewLabel(n.Commit.Author.Name)
 	authorItemEmailLabel := widget.NewLabel(n.Commit.Author.Email)
 	authorItemWhenLabel := widget.NewLabel(n.Commit.Author.When.Format(dateTimeFormat))
@@ -246,8 +248,21 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 		),
 		authorItemWhenLabel,
 	)
+	form.Append("Author", authorItemDetail)
+
 	hashItemLabel := widget.NewLabel(n.Hash())
+	form.Append("SHA", hashItemLabel)
+
 	parentsHashItemLabel := widget.NewLabel(m.parentsShortHashes(n))
+	form.Append("Parents", parentsHashItemLabel)
+
+	if refs := m.rm.AllRefs(n.Hash()); len(refs) > 0 {
+		dummy := widget.NewLabel("")
+		markers, _ := calcCommitRefMarkers(m.rm, n, dummy.Size().Height)
+		refsItem := widget.NewFormItem("Refs", container.NewWithoutLayout(dummy, markers))
+		form.AppendItem(refsItem)
+	}
+
 	messageItemRichText := widget.NewRichText()
 	msgHead, msgTail := parseCommitMessage(n)
 	msgHeadSegment := &widget.TextSegment{
@@ -263,16 +278,8 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 		msgHeadSegment,
 		msgTailSegment,
 	}
-	authorItem := widget.NewFormItem("Author", authorItemDetail)
-	hashItem := widget.NewFormItem("SHA", hashItemLabel)
-	parentsHashItem := widget.NewFormItem("Parents", parentsHashItemLabel)
-	messageItem := widget.NewFormItem("", messageItemRichText)
-	form := widget.NewForm(
-		authorItem,
-		hashItem,
-		parentsHashItem,
-		messageItem,
-	)
+	form.Append("", messageItemRichText)
+
 	v := m.commitDetailView
 	v.Scroll.Content = form
 	v.Scroll.Refresh()
