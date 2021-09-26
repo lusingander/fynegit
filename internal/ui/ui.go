@@ -176,30 +176,34 @@ func updateCommitGraphItem(rm *repository.RepositoryManager, node *gogigu.Node, 
 }
 
 func calcCommitRefMarkers(rm *repository.RepositoryManager, node *gogigu.Node, h float32) (fyne.CanvasObject, float32) {
-	var wBuf, hBuf float32 = theme.Padding(), 1
-	left := graph.CalcCommitGraphAreaWidth(rm)
 	refs := rm.AllRefs(node.Hash())
-	objs := make([]fyne.CanvasObject, 0)
-	limitWidth := graphMessageColumnWidth - wBuf*2
+	left := graph.CalcCommitGraphAreaWidth(rm)
+	markers, totalWidth := buildCommitRefMarkers(refs, h)
+	markers.Move(fyne.NewPos(left, 0))
+	return markers, totalWidth
+}
+
+func buildCommitRefMarkers(refs []*repository.Ref, h float32) (fyne.CanvasObject, float32) {
+	var wBuf, hBuf float32 = theme.Padding(), 1
 	var totalWidth float32 = 0
+	objs := make([]fyne.CanvasObject, 0)
 	for _, ref := range refs {
-		name := ref.Name()
 		bg, fg := refsColor(ref.RefType())
 		rect := &canvas.Rectangle{
 			FillColor:   bg,
 			StrokeColor: fg,
 			StrokeWidth: 1,
 		}
+		name := ref.Name()
 		textSize := textSize(name)
-		rect.Resize(fyne.NewSize(textSize.Width+wBuf*2, textSize.Height+hBuf*2))
-		rect.Move(fyne.NewPos(wBuf+left+totalWidth, (h/2)-((textSize.Height+hBuf)/2)))
+		rectWidth := textSize.Width + wBuf*2
+		rectHeight := textSize.Height + hBuf*2
+		rect.Resize(fyne.NewSize(rectWidth, rectHeight))
+		rect.Move(fyne.NewPos(wBuf+totalWidth, (h/2)-(rectHeight/2)))
 		text := canvas.NewText(name, fg)
-		text.Move(fyne.NewPos(wBuf+left+wBuf+totalWidth, (h/2)-((textSize.Height+hBuf)/2)+hBuf))
+		text.Move(fyne.NewPos(rect.Position().X+wBuf, rect.Position().Y+hBuf))
 		objs = append(objs, rect, text)
-		totalWidth += textSize.Width + wBuf*4
-	}
-	if totalWidth > limitWidth {
-		panic(fmt.Errorf("total: %v, limit: %v", totalWidth, limitWidth))
+		totalWidth += rectWidth + wBuf*2
 	}
 	return container.NewWithoutLayout(objs...), totalWidth
 }
@@ -258,8 +262,10 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 
 	if refs := m.rm.AllRefs(n.Hash()); len(refs) > 0 {
 		dummy := widget.NewLabel("")
-		markers, _ := calcCommitRefMarkers(m.rm, n, dummy.Size().Height)
+		dh := dummy.Size().Height
+		markers, _ := buildCommitRefMarkers(refs, dh)
 		refsItem := widget.NewFormItem("Refs", container.NewWithoutLayout(dummy, markers))
+		markers.Move(fyne.NewPos(0, (refsItem.Widget.Size().Height/2)-(dh/2)))
 		form.AppendItem(refsItem)
 	}
 
