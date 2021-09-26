@@ -266,10 +266,10 @@ type sideMenuView struct {
 func (m *manager) buildSideMenuView() fyne.CanvasObject {
 	v := &sideMenuView{}
 	tree := widget.NewTreeWithStrings(map[string][]string{
-		"":         {"Branches", "Remotes", "Tags"},
-		"Branches": m.rm.BranchNames(),
-		"Remotes":  m.rm.RemoteBranchNames(),
-		"Tags":     m.rm.TagNames(),
+		"":                {"Local Branches", "Remote Branches", "Tags"},
+		"Local Branches":  m.rm.BranchNames(),
+		"Remote Branches": m.rm.RemoteBranchNames(),
+		"Tags":            m.rm.TagNames(),
 	})
 	v.Tree = tree
 	m.sideMenuView = v
