@@ -190,3 +190,46 @@ func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, m
 	})
 	return bm, rm, tm, nil
 }
+
+type PatchFileDetail struct {
+	name string
+}
+
+func (d *PatchFileDetail) Name() string {
+	return d.name
+}
+
+type PatchFileType int
+
+const (
+	PatchFileModify PatchFileType = iota
+	PatchFileInsert
+	PatchFileDelete
+)
+
+func (m *RepositoryManager) PatchFileDetails(target *gogigu.Node) ([]*PatchFileDetail, error) {
+	ps := m.Parents(target.Hash())
+	if len(ps) == 0 {
+		return []*PatchFileDetail{}, nil
+	}
+	nt, err := target.Commit.Tree()
+	if err != nil {
+		return nil, err
+	}
+	pt, err := ps[0].Commit.Tree()
+	if err != nil {
+		return nil, err
+	}
+	patch, err := nt.Patch(pt)
+	if err != nil {
+		return nil, err
+	}
+	ds := make([]*PatchFileDetail, 0)
+	for _, stat := range patch.Stats() {
+		d := &PatchFileDetail{
+			name: stat.Name,
+		}
+		ds = append(ds, d)
+	}
+	return ds, nil
+}

@@ -35,6 +35,7 @@ type manager struct {
 	*commitGraphView
 	*commitDetailView
 	*sideMenuView
+	*patchSummaryView
 }
 
 func Start(w fyne.Window, rm *repository.RepositoryManager) {
@@ -56,17 +57,22 @@ func (m *manager) buildContent() fyne.CanvasObject {
 		return m.buildEmptyView()
 	}
 
-	vs := container.NewVSplit(
-		m.buildCommitGraphView(),
+	commitInfoHs := container.NewHSplit(
 		m.buildCommitDetailView(),
+		m.buildPatchSummaryView(),
 	)
-	vs.SetOffset(0.6)
-	hs := container.NewHSplit(
+	commitInfoHs.SetOffset(0.7)
+	logVs := container.NewVSplit(
+		m.buildCommitGraphView(),
+		commitInfoHs,
+	)
+	logVs.SetOffset(0.6)
+	repoHs := container.NewHSplit(
 		m.buildSideMenuView(),
-		vs,
+		logVs,
 	)
-	hs.SetOffset(0.15)
-	return hs
+	repoHs.SetOffset(0.15)
+	return repoHs
 }
 
 func (m *manager) buildMainMenu() *fyne.MainMenu {
@@ -133,7 +139,10 @@ func (m *manager) buildCommitGraphView() fyne.CanvasObject {
 			updateCommitGraphItem(m.rm, m.rm.Nodes[id], item)
 		},
 	)
-	list.OnSelected = m.updateCommitDetailView
+	list.OnSelected = func(id widget.ListItemID) {
+		m.updateCommitDetailView(id)
+		m.updatePatchSummaryView(id)
+	}
 	v.List = list
 	m.commitGraphView = v
 	return list
@@ -387,4 +396,33 @@ func ellipsisText(src string, maxWidth float32) string {
 
 	cut := cutText(src, maxWidth-tailBuf, buf, 0, 6)
 	return cut + tail
+}
+
+type patchSummaryView struct {
+	*container.Scroll
+}
+
+func (m *manager) buildPatchSummaryView() fyne.CanvasObject {
+	v := &patchSummaryView{}
+	scroll := container.NewScroll(widget.NewLabel(""))
+	v.Scroll = scroll
+	m.patchSummaryView = v
+	return v.Scroll
+}
+
+func (m *manager) updatePatchSummaryView(id widget.ListItemID) {
+	n := m.rm.Nodes[id]
+	v := m.patchSummaryView
+	details, err := m.rm.PatchFileDetails(n)
+	if err != nil {
+		v.Scroll.Content = widget.NewLabel("")
+		v.Scroll.Refresh()
+		return
+	}
+	rows := make([]fyne.CanvasObject, len(details))
+	for i, d := range details {
+		rows[i] = widget.NewLabel(d.Name())
+	}
+	v.Scroll.Content = container.NewVBox(rows...)
+	v.Scroll.Refresh()
 }
