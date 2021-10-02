@@ -421,8 +421,26 @@ func (m *manager) updatePatchSummaryView(id widget.ListItemID) {
 	}
 	rows := make([]fyne.CanvasObject, len(details))
 	for i, d := range details {
-		rows[i] = widget.NewLabel(d.Name())
+		rows[i] = buildChangeDetailLine(d)
 	}
 	v.Scroll.Content = container.NewVBox(rows...)
 	v.Scroll.Refresh()
+}
+
+func buildChangeDetailLine(d *repository.PatchFileDetail) fyne.CanvasObject {
+	var icon fyne.Resource
+	switch d.ChangeType() {
+	case repository.Modify:
+		icon = theme.MoreHorizontalIcon()
+	case repository.Insert:
+		icon = theme.ContentAddIcon()
+	case repository.Delete:
+		icon = theme.ContentRemoveIcon()
+	case repository.Move:
+		icon = theme.NavigateNextIcon()
+	}
+	return container.NewHBox(
+		widget.NewIcon(icon),
+		widget.NewLabel(d.Name()),
+	)
 }

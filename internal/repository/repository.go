@@ -1,10 +1,13 @@
 package repository
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/utils/merkletrie"
 	"github.com/lusingander/gogigu"
 )
 
@@ -192,19 +195,26 @@ func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, m
 }
 
 type PatchFileDetail struct {
-	name string
+	name       string
+	changeType ChangeType
 }
 
 func (d *PatchFileDetail) Name() string {
 	return d.name
 }
 
-type PatchFileType int
+func (d *PatchFileDetail) ChangeType() ChangeType {
+	return d.changeType
+}
+
+type ChangeType int
 
 const (
-	PatchFileModify PatchFileType = iota
-	PatchFileInsert
-	PatchFileDelete
+	_ ChangeType = iota
+	Modify
+	Insert
+	Delete
+	Move
 )
 
 func (m *RepositoryManager) PatchFileDetails(target *gogigu.Node) ([]*PatchFileDetail, error) {
@@ -220,16 +230,49 @@ func (m *RepositoryManager) PatchFileDetails(target *gogigu.Node) ([]*PatchFileD
 	if err != nil {
 		return nil, err
 	}
-	patch, err := nt.Patch(pt)
+	changes, err := pt.Diff(nt)
 	if err != nil {
 		return nil, err
 	}
 	ds := make([]*PatchFileDetail, 0)
-	for _, stat := range patch.Stats() {
+	for _, change := range changes {
+		changeType, err := changeTypeFrom(change)
+		if err != nil {
+			return nil, err
+		}
 		d := &PatchFileDetail{
-			name: stat.Name,
+			name:       nameFrom(change, changeType),
+			changeType: changeType,
 		}
 		ds = append(ds, d)
 	}
 	return ds, nil
+}
+
+func changeTypeFrom(change *object.Change) (ChangeType, error) {
+	a, err := change.Action()
+	if err != nil {
+		return 0, err
+	}
+	switch a {
+	case merkletrie.Modify:
+		if change.From.Name == change.To.Name {
+			return Modify, nil
+		} else {
+			return Move, nil
+		}
+	case merkletrie.Insert:
+		return Insert, nil
+	case merkletrie.Delete:
+		return Delete, nil
+	default:
+		return 0, fmt.Errorf("invalid type: %v", a)
+	}
+}
+
+func nameFrom(c *object.Change, ct ChangeType) string {
+	if ct == Delete {
+		return c.From.Name
+	}
+	return c.To.Name
 }
