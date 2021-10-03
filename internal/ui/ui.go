@@ -282,16 +282,26 @@ func (m *manager) updateCommitDetailView(id widget.ListItemID) {
 	form := widget.NewForm()
 
 	authorItemNameLabel := widget.NewLabel(n.Commit.Author.Name)
-	authorItemEmailLabel := widget.NewLabel(n.Commit.Author.Email)
+	authorItemEmailLabel := widget.NewLabel(formatEmail(n.Commit.Author.Email))
 	authorItemWhenLabel := widget.NewLabel(n.Commit.Author.When.Format(dateTimeFormat))
-	authorItemDetail := container.NewVBox(
-		container.NewHBox(
-			authorItemNameLabel,
-			authorItemEmailLabel,
-		),
+	authorItemDetail := container.NewHBox(
+		authorItemNameLabel,
+		authorItemEmailLabel,
 		authorItemWhenLabel,
 	)
 	form.Append("Author", authorItemDetail)
+
+	if showCommiter(n) {
+		committerItemNameLabel := widget.NewLabel(n.Commit.Committer.Name)
+		committerItemEmailLabel := widget.NewLabel(formatEmail(n.Commit.Committer.Email))
+		committerItemWhenLabel := widget.NewLabel(n.Commit.Committer.When.Format(dateTimeFormat))
+		committerItemDetail := container.NewHBox(
+			committerItemNameLabel,
+			committerItemEmailLabel,
+			committerItemWhenLabel,
+		)
+		form.Append("Committer", committerItemDetail)
+	}
 
 	hashItemLabel := widget.NewLabel(n.Hash())
 	form.Append("SHA", hashItemLabel)
@@ -346,6 +356,16 @@ func parseCommitMessage(n *gogigu.Node) (string, string) {
 		return msgs[0], msgs[1]
 	}
 	return msgs[0], ""
+}
+
+func formatEmail(email string) string {
+	return fmt.Sprintf("<%s>", email)
+}
+
+func showCommiter(n *gogigu.Node) bool {
+	a := n.Commit.Author
+	c := n.Commit.Committer
+	return a.Name != c.Name || a.Email != c.Email || !a.When.Equal(c.When)
 }
 
 type sideMenuView struct {
