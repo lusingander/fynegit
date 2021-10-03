@@ -8,7 +8,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/utils/merkletrie"
-	"github.com/lusingander/gogigu"
+	"github.com/lusingander/fynegit/internal/gogigu"
 )
 
 type RefType int

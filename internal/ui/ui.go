@@ -11,9 +11,9 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/lusingander/fynegit/internal/gogigu"
 	"github.com/lusingander/fynegit/internal/graph"
 	"github.com/lusingander/fynegit/internal/repository"
-	"github.com/lusingander/gogigu"
 )
 
 const (

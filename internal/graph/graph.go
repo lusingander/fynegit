@@ -6,8 +6,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"github.com/lusingander/fynegit/internal/gogigu"
 	"github.com/lusingander/fynegit/internal/repository"
-	"github.com/lusingander/gogigu"
 )
 
 const (
