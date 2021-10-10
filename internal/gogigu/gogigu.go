@@ -1,6 +1,7 @@
 package gogigu
 
 import (
+	"log"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -102,6 +103,8 @@ func initRepository(repo *git.Repository) (*Repository, error) {
 					childrenMap[parentHash] = make(Nodes, 0)
 				}
 				childrenMap[parentHash] = append(childrenMap[parentHash], n)
+			} else {
+				log.Printf("node not found: target=%s, parent=%s", n.hash, parentHash)
 			}
 		}
 	}
