@@ -378,7 +378,7 @@ func (m *manager) buildSideMenuView() fyne.CanvasObject {
 		"":                {"Local Branches", "Remote Branches", "Tags"},
 		"Local Branches":  m.rm.BranchNames(),
 		"Remote Branches": m.rm.RemoteBranchNames(),
-		"Tags":            m.rm.TagNames(),
+		"Tags":            m.rm.SortedTagNames(),
 	})
 	tree.OnSelected = m.selectRefRow
 	v.Tree = tree

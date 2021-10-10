@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -89,6 +90,27 @@ func (m *RepositoryManager) TagNames() []string {
 		}
 	}
 	sort.Strings(ret)
+	return ret
+}
+
+func (m *RepositoryManager) SortedTagNames() []string {
+	ns := m.TagNames()
+	sems := make([]*semver.Version, 0, len(ns))
+	others := make([]string, 0, len(ns))
+	for _, n := range ns {
+		if v, err := semver.NewVersion(n); err == nil {
+			sems = append(sems, v)
+		} else {
+			others = append(others, n)
+		}
+	}
+	sort.Sort(sort.Reverse(semver.Collection(sems)))
+	sort.Strings(others)
+	ret := make([]string, 0, len(ns))
+	for _, sem := range sems {
+		ret = append(ret, sem.Original())
+	}
+	ret = append(ret, others...)
 	return ret
 }
 
