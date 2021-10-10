@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-git/go-git/v5"
@@ -195,6 +196,9 @@ func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, m
 			}
 			bm[hash] = append(bm[hash], branch)
 		} else if r.Name().IsRemote() {
+			if strings.HasSuffix(r.Name().String(), plumbing.HEAD.String()) {
+				return nil
+			}
 			if _, ok := rm[hash]; !ok {
 				rm[hash] = make([]*Ref, 0)
 			}
