@@ -20,9 +20,9 @@ const (
 )
 
 type Ref struct {
-	refType RefType
-	name    string
-	hash    string
+	refType    RefType
+	name       string
+	targetHash string
 }
 
 func (r *Ref) RefType() RefType {
@@ -33,8 +33,8 @@ func (r *Ref) Name() string {
 	return r.name
 }
 
-func (r *Ref) Hash() string {
-	return r.hash
+func (r *Ref) TargetHash() string {
+	return r.targetHash
 }
 
 type RepositoryManager struct {
@@ -153,6 +153,10 @@ func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, m
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	annotatedTags, err := annotatedTagsMap(src)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	bm := make(map[string][]*Ref)
 	rm := make(map[string][]*Ref)
 	tm := make(map[string][]*Ref)
@@ -163,9 +167,9 @@ func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, m
 				bm[hash] = make([]*Ref, 0)
 			}
 			branch := &Ref{
-				refType: Branch,
-				name:    r.Name().Short(),
-				hash:    hash,
+				refType:    Branch,
+				name:       r.Name().Short(),
+				targetHash: hash,
 			}
 			bm[hash] = append(bm[hash], branch)
 		} else if r.Name().IsRemote() {
@@ -173,25 +177,41 @@ func getReferences(src *git.Repository) (map[string][]*Ref, map[string][]*Ref, m
 				rm[hash] = make([]*Ref, 0)
 			}
 			remote := &Ref{
-				refType: RemoteBranch,
-				name:    r.Name().Short(),
-				hash:    hash,
+				refType:    RemoteBranch,
+				name:       r.Name().Short(),
+				targetHash: hash,
 			}
 			rm[hash] = append(rm[hash], remote)
 		} else if r.Name().IsTag() {
 			if _, ok := tm[hash]; !ok {
 				tm[hash] = make([]*Ref, 0)
 			}
+			if at, ok := annotatedTags[hash]; ok {
+				hash = at.Target.String()
+			}
 			tag := &Ref{
-				refType: Tag,
-				name:    r.Name().Short(),
-				hash:    hash,
+				refType:    Tag,
+				name:       r.Name().Short(),
+				targetHash: hash,
 			}
 			tm[hash] = append(tm[hash], tag)
 		}
 		return nil
 	})
 	return bm, rm, tm, nil
+}
+
+func annotatedTagsMap(src *git.Repository) (map[string]*object.Tag, error) {
+	tags, err := src.TagObjects()
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]*object.Tag)
+	tags.ForEach(func(t *object.Tag) error {
+		ret[t.Hash.String()] = t
+		return nil
+	})
+	return ret, nil
 }
 
 type PatchFileDetail struct {

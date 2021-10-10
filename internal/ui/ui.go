@@ -395,7 +395,7 @@ func (m *manager) selectRefRow(name string) {
 	if ref == nil {
 		return
 	}
-	refNode := m.rm.Node(ref.Hash())
+	refNode := m.rm.Node(ref.TargetHash())
 	if refNode == nil {
 		return
 	}
