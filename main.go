@@ -9,10 +9,6 @@ import (
 	"github.com/lusingander/fynegit/internal/ui"
 )
 
-const (
-	appTitle = "fynegit"
-)
-
 func main() {
 	if err := run(os.Args); err != nil {
 		log.Fatal(err)
@@ -26,7 +22,7 @@ func run(args []string) error {
 	}
 
 	a := app.New()
-	w := a.NewWindow(appTitle)
+	w := a.NewWindow("")
 	ui.Start(w, repo)
 
 	return nil

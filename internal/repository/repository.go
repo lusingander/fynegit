@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -45,6 +46,8 @@ type RepositoryManager struct {
 	branchesMap map[string][]*Ref
 	remotesMap  map[string][]*Ref
 	tagsMap     map[string][]*Ref
+
+	name string
 }
 
 func (m *RepositoryManager) AllRefs(hash string) []*Ref {
@@ -155,11 +158,14 @@ func OpenGitRepository(path string) (*RepositoryManager, error) {
 		return nil, err
 	}
 
+	name := filepath.Base(path)
+
 	rm := &RepositoryManager{
 		Repository:  repo,
 		branchesMap: branches,
 		remotesMap:  remotes,
 		tagsMap:     tags,
+		name:        name,
 	}
 	return rm, nil
 }
@@ -321,4 +327,11 @@ func nameFrom(c *object.Change, ct ChangeType) string {
 		return c.From.Name
 	}
 	return c.To.Name
+}
+
+func (m *RepositoryManager) RepositoryName() string {
+	if m == nil {
+		return ""
+	}
+	return m.name
 }

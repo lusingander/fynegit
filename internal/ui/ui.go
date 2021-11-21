@@ -17,6 +17,10 @@ import (
 )
 
 const (
+	appName = "fynegit"
+)
+
+const (
 	dateTimeFormat = "2006/01/02 15:04:05"
 
 	graphMessageColumnWidth = 500.
@@ -52,7 +56,19 @@ func Start(w fyne.Window, rm *repository.RepositoryManager) {
 	m.ShowAndRun()
 }
 
+func (m *manager) updateWindowTitle(repo string) {
+	if repo == "" {
+		m.Window.SetTitle(appName)
+		return
+	}
+	title := fmt.Sprintf("%s - %s", repo, appName)
+	m.Window.SetTitle(title)
+}
+
 func (m *manager) buildContent() fyne.CanvasObject {
+
+	m.updateWindowTitle(m.rm.RepositoryName())
+
 	if m.rm == nil {
 		return m.buildEmptyView()
 	}
